@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAU/USD Signal Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --gold-dim: #7A6030;
+    --bg: #0A0A0A;
+    --bg2: #111111;
+    --bg3: #1A1A1A;
+    --border: #2A2A2A;
+    --text: #E8E0D0;
+    --text-dim: #666050;
+    --green: #2ECC71;
+    --red: #E74C3C;
+    --blue: #3498DB;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--gold);
+  }
+
+  .header span {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card.full { grid-column: 1 / -1; }
+
+  .card-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* Signal display */
+  .signal-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .signal-badge {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    transition: all 0.4s ease;
+  }
+
+  .signal-badge.LONG  { color: var(--green); }
+  .signal-badge.SHORT { color: var(--red); }
+  .signal-badge.NEUTRAL { color: var(--gold); }
+
+  .signal-meta { text-align: right; }
+  .signal-date {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .signal-version {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* Probability bar */
+  .prob-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .prob-label { font-size: 13px; color: var(--text-dim); }
+  .prob-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold-light);
+  }
+  .prob-bar-track {
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .prob-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--gold);
+    transition: width 0.6s cubic-bezier(.4,0,.2,1);
+    width: 0%;
+  }
+
+  /* Confidence + Regime pills */
+  .pills { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pill {
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border: 1px solid;
+  }
+  .pill.HIGH     { color: var(--green); border-color: var(--green); background: rgba(46,204,113,0.08); }
+  .pill.MEDIUM   { color: var(--gold);  border-color: var(--gold);  background: rgba(201,168,76,0.08); }
+  .pill.LOW      { color: var(--red);   border-color: var(--red);   background: rgba(231,76,60,0.08); }
+  .pill.BULLISH  { color: var(--green); border-color: var(--green); background: rgba(46,204,113,0.08); }
+  .pill.BEARISH  { color: var(--red);   border-color: var(--red);   background: rgba(231,76,60,0.08); }
+  .pill.NEUTRAL-r{ color: var(--blue);  border-color: var(--blue);  background: rgba(52,152,219,0.08); }
+
+  /* Real yield */
+  .yield-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    padding: 12px;
+    background: var(--bg3);
+    border-radius: 8px;
+    border-left: 3px solid var(--gold-dim);
+  }
+
+  /* Controls */
+  .controls { display: flex; flex-direction: column; gap: 14px; }
+
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  input[type="date"], input[type="range"] {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="date"]:focus { border-color: var(--gold); }
+
+  input[type="range"] {
+    padding: 0;
+    height: 6px;
+    cursor: pointer;
+    accent-color: var(--gold);
+  }
+
+  .threshold-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .threshold-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--gold-light);
+  }
+
+  .btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 28px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Status */
+  .status {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 8px;
+    min-height: 36px;
+    transition: all 0.3s;
+  }
+  .status.idle    { color: var(--text-dim); }
+  .status.loading { color: var(--gold); background: rgba(201,168,76,0.08); }
+  .status.success { color: var(--green); background: rgba(46,204,113,0.08); }
+  .status.error   { color: var(--red); background: rgba(231,76,60,0.08); }
+
+  /* Disclaimer */
+  .disclaimer {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    letter-spacing: 1px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .loading-anim { animation: pulse 1s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:0 auto;">
+  <div class="header">
+    <h1>XAU/USD Signal</h1>
+    <span>LIVE PREDICTION DASHBOARD</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- Signal card -->
+    <div class="card">
+      <div class="card-label">Direction Signal</div>
+      <div class="signal-display">
+        <div class="signal-badge NEUTRAL" id="signal-text">—</div>
+        <div class="signal-meta">
+          <div class="signal-date" id="pred-date">No prediction yet</div>
+          <div class="signal-version" id="model-ver">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confidence + Regime -->
+    <div class="card">
+      <div class="card-label">Confidence & Regime</div>
+      <div class="pills" id="pills-container">
+        <span class="pill MEDIUM">— Confidence</span>
+        <span class="pill NEUTRAL-r">— Regime</span>
+      </div>
+      <br>
+      <div class="yield-text" id="yield-text">Real yield signal will appear here after prediction</div>
+    </div>
+
+    <!-- Probability -->
+    <div class="card full">
+      <div class="card-label">UP Probability</div>
+      <div class="prob-row">
+        <span class="prob-label">Probability of gold moving UP tomorrow</span>
+        <span class="prob-value" id="prob-value">—</span>
+      </div>
+      <div class="prob-bar-track">
+        <div class="prob-bar-fill" id="prob-bar"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim)">SHORT zone (< 0.45)</span>
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim)">NEUTRAL</span>
+        <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text-dim)">LONG zone (> 0.55)</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card full">
+      <div class="card-label">Run Prediction</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end;">
+        <div class="controls">
+          <div class="input-group">
+            <label>Date (leave empty for today)</label>
+            <input type="date" id="date-input">
+          </div>
+          <div class="input-group">
+            <div class="threshold-row">
+              <label>Threshold</label>
+              <span class="threshold-val" id="thresh-val">0.50</span>
+            </div>
+            <input type="range" id="threshold" min="0.3" max="0.7" step="0.01" value="0.5"
+              oninput="document.getElementById('thresh-val').textContent = parseFloat(this.value).toFixed(2)">
+          </div>
+        </div>
+        <div>
+          <button class="btn" id="predict-btn" onclick="runPrediction()">Predict Now</button>
+          <div class="status idle" id="status">Ready — click Predict Now</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="disclaimer">For research & portfolio purposes only — not financial advice</div>
+</div>
+
+<script>
+async function runPrediction() {
+  const btn = document.getElementById('predict-btn');
+  const status = document.getElementById('status');
+  const dateVal = document.getElementById('date-input').value;
+  const threshold = parseFloat(document.getElementById('threshold').value);
+
+  btn.disabled = true;
+  status.className = 'status loading';
+  status.textContent = 'Fetching prediction...';
+  status.classList.add('loading-anim');
+
+  const body = { threshold };
+  if (dateVal) body.date = dateVal;
+
+  try {
+    const res = await fetch('http://127.0.0.1:8000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    updateUI(data);
+
+    status.classList.remove('loading-anim');
+    status.className = 'status success';
+    status.textContent = 'Prediction received successfully';
+
+  } catch (e) {
+    status.classList.remove('loading-anim');
+    status.className = 'status error';
+    status.textContent = e.message.includes('fetch')
+      ? 'Cannot connect — is your API running? Run: python -m uvicorn api.main:app --reload'
+      : e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function updateUI(data) {
+  // Signal
+  const sigEl = document.getElementById('signal-text');
+  sigEl.textContent = data.signal;
+  sigEl.className = 'signal-badge ' + data.signal;
+
+  // Meta
+  document.getElementById('pred-date').textContent = data.prediction_date;
+  document.getElementById('model-ver').textContent = data.model_version;
+
+  // Probability
+  const pct = Math.round(data.probability * 100);
+  document.getElementById('prob-value').textContent = pct + '%';
+  setTimeout(() => {
+    document.getElementById('prob-bar').style.width = pct + '%';
+    const hue = pct > 55 ? '#2ECC71' : pct < 45 ? '#E74C3C' : '#C9A84C';
+    document.getElementById('prob-bar').style.background = hue;
+  }, 100);
+
+  // Pills
+  const regime = data.regime;
+  const regimeClass = regime === 'NEUTRAL' ? 'NEUTRAL-r' : regime;
+  document.getElementById('pills-container').innerHTML = `
+    <span class="pill ${data.confidence}">${data.confidence} Confidence</span>
+    <span class="pill ${regimeClass}">${regime} Regime</span>
+    <span class="pill MEDIUM">${data.features_used} Features</span>
+  `;
+
+  // Yield
+  document.getElementById('yield-text').textContent =
+    data.real_yield_signal || 'Real yield data not available';
+}
+</script>
+</body>
+</html>
