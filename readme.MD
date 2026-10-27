@@ -19,7 +19,7 @@ xauusd_pipeline/
 ├── data/
 │   └── ingestion.py        # Fetches gold prices (Yahoo), macro (FRED), COT (CFTC)
 ├── features/
-│   └── engineering.py      # 34 features: technical + macro + order flow + HMM regime
+│   └── engineering.py      # 66 features: technical + macro + order flow + HMM regime
 ├── model/
 │   ├── train.py            # LightGBM + walk-forward CV + MLflow tracking
 │   └── artifacts/          # Trained model saved here (model.lgb)
